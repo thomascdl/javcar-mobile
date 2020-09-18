@@ -1,0 +1,43 @@
+<template>
+  <div>
+    <div class="top">
+      <slot name="top">
+        <van-search
+          v-model="value"
+          placeholder="请输入搜索关键词"
+          shape="round"
+          background="red"
+        />
+      </slot>
+    </div>
+    <div class="main-area">
+      <slot name="center"></slot>
+    </div>
+  </div>
+</template>
+
+<script>
+export default {
+  name: "MainArea",
+  data() {
+    return {
+      value: ""
+    };
+  }
+};
+</script>
+
+<style scoped>
+.top {
+  top: 0;
+  position: fixed;
+  width: 100%;
+}
+.main-area {
+  position: absolute;
+  bottom: 50px;
+  top: 54px;
+  overflow: scroll;
+  width: 100%;
+}
+</style>

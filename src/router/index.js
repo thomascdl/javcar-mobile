@@ -2,29 +2,35 @@ import Vue from "vue";
 import VueRouter from "vue-router";
 
 const Layout = () => import("@/layout");
-const Home = () => import("@/views/Home");
+const VideoList = () => import("@/views/VideoList");
 const About = () => import("@/views/About");
+const Actor = () => import("@/views/Actor");
 Vue.use(VueRouter);
 
 const routes = [
   {
     path: "",
-    redirect: "home"
+    redirect: "video"
   },
   {
     path: "/",
-    redirect: "home",
+    redirect: "video",
     component: Layout,
     children: [
       {
-        path: "home",
-        name: "home",
-        component: Home
+        path: "video",
+        name: "video",
+        component: VideoList
       },
       {
         path: "about",
         name: "about",
         component: About
+      },
+      {
+        path: "actor",
+        name: "actor",
+        component: Actor
       }
     ]
   }

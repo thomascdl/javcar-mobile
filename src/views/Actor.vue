@@ -1,7 +1,7 @@
 <template>
   <MainArea>
     <template v-slot:center>
-      <p>about</p>
+      <p>actor</p>
       <p>11111111111</p>
       <p>11111111111</p>
       <p>11111111111</p>
@@ -71,7 +71,7 @@
 <script>
 const MainArea = () => import("./components/MainArea");
 export default {
-  name: "about",
+  name: "actor",
   components: {
     MainArea
   }
