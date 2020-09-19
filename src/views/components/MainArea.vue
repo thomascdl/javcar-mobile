@@ -11,20 +11,20 @@
       </slot>
     </div>
     <div class="main-area">
-      <slot name="center"></slot>
+      <slot name="center" />
     </div>
   </div>
 </template>
 
 <script>
 export default {
-  name: "MainArea",
+  name: 'MainArea',
   data() {
     return {
-      value: ""
-    };
+      value: ''
+    }
   }
-};
+}
 </script>
 
 <style scoped>
