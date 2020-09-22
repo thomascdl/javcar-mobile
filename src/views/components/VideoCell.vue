@@ -1,6 +1,6 @@
 <template>
   <div class="video">
-    <div class="top clearfix">
+    <div class="top clearFix">
       <div class="top-left">
         <van-image
           round
@@ -10,7 +10,7 @@
         />
       </div>
       <div class="top-right">
-        <div class="clearfix">
+        <div class="clearFix">
           <span class="fh">ABP-103</span>
           <span class="score">评分</span>
         </div>
@@ -21,6 +21,7 @@
       </div>
     </div>
     <div class="video-area">
+      <TVideo src="https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"></TVideo>
       <div class="play-button"></div>
       <div class="play-count"></div>
       <div class="time"></div>
@@ -33,26 +34,33 @@
 </template>
 
 <script>
+const TVideo = () => import("@/components/videoPlayer/t-video");
 export default {
   name: "VideoCell",
-  components: {},
+  components: {
+    TVideo
+  },
   data() {
-    return {};
-  }
+    return {
+      Player: null
+    };
+  },
+  mounted() {},
+  methods: {}
 };
 </script>
 
 <style scoped>
-.clearfix {
+.clearFix {
   *zoom: 1;
 }
-.clearfix:before,
-.clearfix:after {
+.clearFix:before,
+.clearFix:after {
   display: table;
   line-height: 0;
   content: "";
 }
-.clearfix:after {
+.clearFix:after {
   clear: both;
 }
 .top {
@@ -73,10 +81,10 @@ export default {
 .title {
   word-break: normal;
 }
-.fh{
+.fh {
   float: left;
 }
-.score{
+.score {
   float: right;
 }
 </style>

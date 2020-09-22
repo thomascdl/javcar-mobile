@@ -18,13 +18,13 @@
 
 <script>
 export default {
-  name: 'MainArea',
+  name: "MainArea",
   data() {
     return {
-      value: ''
-    }
+      value: ""
+    };
   }
-}
+};
 </script>
 
 <style scoped>

@@ -8,7 +8,7 @@
 
 <script>
 const MainArea = () => import("./components/MainArea");
-const VideoCell = () => import("@/components/VideoCell");
+const VideoCell = () => import("./components/VideoCell");
 export default {
   name: "videoList",
   data() {
