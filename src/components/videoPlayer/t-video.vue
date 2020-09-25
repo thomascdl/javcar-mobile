@@ -1,6 +1,10 @@
 <template>
   <div ref="player" class="video-player">
     <!-- 播放器界面; 兼容ios  controls-->
+    <div
+      class="wrapper"
+      :style="{ visibility: state.controlBarShow ? 'visible' : 'hidden' }"
+    ></div>
     <video
       ref="video"
       v-if="showVideo"
@@ -186,15 +190,15 @@ export default {
     // 初始化播放器容器, 获取video-player元素
     // getBoundingClientRect()以client可视区的左上角为基点进行位置计算
     initPlayer() {
-      const $player = this.$el;
-      const $progress = this.$el.getElementsByClassName("progress")[0];
       // 播放器位置
-      this.player.$player = $player;
-      this.progressBar.$progress = $progress;
-      this.player.pos = $player.getBoundingClientRect();
-      this.progressBar.pos = $progress.getBoundingClientRect();
+      this.player.$player = this.$el;
+      this.progressBar.$progress = this.$el.getElementsByClassName(
+        "progress"
+      )[0];
+      this.player.pos = this.$el.getBoundingClientRect();
+      this.progressBar.pos = this.progressBar.$progress.getBoundingClientRect();
       this.video.progress.width = Math.round(
-        $progress.getBoundingClientRect().width
+        this.progressBar.$progress.getBoundingClientRect().width
       );
     },
     // 点击播放 & 暂停按钮
@@ -273,7 +277,6 @@ export default {
     handleWaiting() {
       this.state.controlBtnShow = true;
       this.state.isLoading = true;
-      console.log("wait");
     },
     // 数据加载出错
     handleError() {
@@ -306,27 +309,17 @@ export default {
     },
     moveIng(e) {
       // console.log("触摸中...");
-      let currentX = e.targetTouches[0].pageX;
-      let offsetX = currentX - this.progressBar.pos.left;
-      // 边界检测
-      if (offsetX <= 0) {
-        offsetX = 0;
-      }
-      if (offsetX >= this.video.progress.width) {
-        offsetX = this.video.progress.width;
-      }
-      this.video.progress.current = offsetX;
-
+      this.video.progress.current =
+        e.targetTouches[0].pageX - this.progressBar.pos.left;
       let percent = this.video.progress.current / this.video.progress.width;
       this.$video.duration && this.setPlayTime(percent, this.$video.duration);
     },
     moveEnd(e) {
       // console.log("触摸结束...");
-      let currentX = e.changedTouches[0].pageX;
-      let offsetX = currentX - this.progressBar.pos.left;
-      this.video.progress.current = offsetX;
+      this.video.progress.current =
+        e.changedTouches[0].pageX - this.progressBar.pos.left;
       // 这里的offsetX都是正数
-      let percent = offsetX / this.video.progress.width;
+      let percent = this.video.progress.current / this.video.progress.width;
       this.$video.duration && this.setPlayTime(percent, this.$video.duration);
     },
     // 设置手动播放时间
@@ -338,25 +331,21 @@ export default {
       if (!this.state.fullScreen) {
         this.state.fullScreen = true;
         window.plus.screen.lockOrientation("landscape-primary");
-        // this.initPlayer()
-        // console.log(this.$refs.player.css.width);
-        // console.log(this.$refs.player.clientWidth);
         setTimeout(() => {
           this.$refs.player.requestFullscreen();
         }, 100);
         setTimeout(() => {
-          this.init()
-        }, 200);
+          this.initPlayer();
+        }, 300);
       } else {
         this.state.fullScreen = false;
-        window.plus.screen.lockOrientation("portrait-primary")
-        // this.initPlayer()
+        window.plus.screen.lockOrientation("portrait-primary");
         setTimeout(() => {
           document.exitFullscreen();
         }, 100);
         setTimeout(() => {
-          this.init()
-        }, 200);
+          this.initPlayer();
+        }, 300);
       }
     }
   },
@@ -415,7 +404,33 @@ export default {
     }
   }
 }
-
+.wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  pointer-events: none;
+  background-image: -moz-linear-gradient(
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0.36) 20%,
+    transparent 36%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.24) 77%,
+    rgba(0, 0, 0, 0.36) 83%,
+    rgba(0, 0, 0, 0.6)
+  );
+  background-image: linear-gradient(
+    rgba(0, 0, 0, 0.5),
+    rgba(0, 0, 0, 0.3) 10%,
+    rgba(0, 0, 0, 0.1) 20%,
+    transparent 50%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.1) 80%,
+    rgba(0, 0, 0, 0.3) 90%,
+    rgba(0, 0, 0, 0.5)
+  );
+}
 .video-player {
   width: 100%;
   height: 223px;
