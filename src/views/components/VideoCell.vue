@@ -21,8 +21,7 @@
       </div>
     </div>
     <div class="video-area">
-      <TVideo src="https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"></TVideo>
-      <div class="play-button"></div>
+      <MyVideo></MyVideo>
       <div class="play-count"></div>
       <div class="time"></div>
     </div>
@@ -34,11 +33,12 @@
 </template>
 
 <script>
-const TVideo = () => import("@/components/videoPlayer/t-video");
+// const MyVideo = () => import("@/components/videoPlayer/MyVideo");
+const MyVideo = () => import("@/components/videoPlayer/my-video-2");
 export default {
   name: "VideoCell",
   components: {
-    TVideo
+    MyVideo
   },
   data() {
     return {
