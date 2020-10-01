@@ -1,7 +1,26 @@
 <template>
   <div ref="player" class="player">
-    <div class="control">
-      <div class="play-pause" @click="playOrPause" v-show="state.playBtnShow">
+    <div
+      class="wrapper"
+      :style="{ visibility: state.controlBarShow ? 'visible' : 'hidden' }"
+    ></div>
+    <div
+      class="control"
+      @click="clickScreen"
+      @touchstart="touchScreenStart"
+      @touchmove="touchScreenMove"
+    >
+      <svg-icon
+        v-if="state.fullScreen & state.controlBarShow"
+        class="return"
+        icon-class="return"
+        @click.stop="fullscreen"
+      />
+      <div
+        class="play-pause"
+        @click.stop="playOrPause"
+        v-show="state.playBtnShow"
+      >
         <img
           v-show="!state.playing && !state.isLoading"
           :src="imgSrc.playImg"
@@ -16,6 +35,7 @@
       </div>
       <div
         class="control-bar"
+        v-show="state.controlBarShow"
         :style="{ fontSize: state.fullScreen ? '15px' : '13px' }"
       >
         <span id="current-time" class="time">{{
@@ -30,20 +50,22 @@
             v-model="value"
             class="play-progress-bar"
             button-size="13px"
+            active-color="red"
+            inactive-color="hsla(0,0%,100%,.3)"
             @input="currentTimeChange"
             @change="moveProgress"
-            @drag-start="touchstart"
-            @drag-end="touchend"
+            @drag-start="touchSliderStart"
+            @drag-end="touchSliderEnd"
           />
         </div>
         <span id="total-time" class="time">{{
           video.totalTime | formatTime
         }}</span>
-        <div class="full-screen" @click="fullscreen">
+        <div class="full-screen" @click.stop="fullscreen">
           <svg-icon
             v-if="state.fullScreen"
             class="fullscreen-btn"
-            icon-class="exitfull"
+            icon-class="exitFull"
           />
           <svg-icon v-else class="fullscreen-btn" icon-class="fullscreen" />
         </div>
@@ -51,46 +73,58 @@
     </div>
     <video
       ref="video"
-      src="https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"
+      :src="src"
       id="video"
       style="width:100%;height:100%;object-fit:fill"
-      poster="https://photo.mac69.com/180205/18020526/a9yPQozt0g.jpg"
+      :poster="poster"
       @timeupdate="timeupdate"
       @canplay="init"
       @canplaythrough="state.isLoading = false"
       @waiting="state.isLoading = true"
       @playing="playing"
       @progress="progress"
+      @ended="videoEnd"
     />
   </div>
 </template>
 
 <script>
 export default {
-  name: "my-video-2",
+  name: "my-video",
+  props: {
+    src: {
+      type: String,
+      default: "https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"
+    },
+    poster: {
+      type: String,
+      default: "https://photo.mac69.com/180205/18020526/a9yPQozt0g.jpg"
+    }
+  },
   data() {
     return {
+      startValue: 0, //每次触屏时的value值
+      start: 0, //每次触屏的开始位置
+      end: 0, //每次触屏的结束位置
       value: 0,
       // video控制显示设置
       video: {
         currentTime: "00:00", // 进度时间
         totalTime: "00:00", // 总时间
-        buffer: 0
+        buffer: 0 //缓存进度
       },
       imgSrc: {
         pauseImg: require("assets/video/content_btn_pause.svg"),
         playImg: require("assets/video/content_btn_play.svg"),
-        progressImg: require("assets/video/content_ic_tutu.svg"),
-        increaseImg: require("assets/video/content_ic_increase.svg")
       },
       // 播放状态控制
       state: {
+        isStarted: false, // 是否已经播放过
         playBtnShow: true, // 播放按钮
         controlBarShow: false, // 控制条
         fullScreen: false,
         playing: false,
-        isLoading: false,
-        isEnd: false
+        isLoading: false
       }
     };
   },
@@ -113,10 +147,57 @@ export default {
     }
   },
   methods: {
+    reset() {
+      this.video = {
+        currentTime: "00:00",
+        totalTime: "00:00",
+        buffer: 0
+      };
+      this.startValue = 0;
+      this.start = 0;
+      this.end = 0;
+      this.value = 0;
+      this.state = {
+        isStarted: false,
+        playBtnShow: true,
+        controlBarShow: false,
+        fullScreen: false,
+        playing: false,
+        isLoading: false
+      };
+    },
+    videoEnd() {
+      if (this.state.fullScreen) {
+        window.plus.screen.lockOrientation("portrait-primary");
+        setTimeout(() => {
+          document.exitFullscreen();
+        }, 100);
+      }
+      this.reset();
+      this.$refs.video.load();
+    },
+    touchScreenStart(e) {
+      this.start = e.touches[0].clientX;
+      this.startValue = this.value;
+    },
+    touchScreenMove(e) {
+      const moveRange = (e.touches[0].clientX - this.start) / 10;
+      const newValue = (this.startValue + moveRange) | 0;
+      this.value = newValue < 100 ? newValue : 100;
+      this.video.currentTime = this.$refs.video.currentTime =
+        (this.video.totalTime * this.value) / 100;
+    },
+    clickScreen() {
+      if (!this.state.isStarted) {
+        return;
+      }
+      this.state.playBtnShow = !this.state.playBtnShow;
+      this.state.controlBarShow = !this.state.controlBarShow;
+    },
     progress() {
       setTimeout(() => {
         const end = this.$refs.video.buffered.end(0);
-        this.video.buffer = ((end / this.$refs.video.duration) * 100) | 0;
+        this.video.buffer = ((end / this.video.totalTime) * 100) | 0;
       }, 100);
     },
     playing() {
@@ -126,23 +207,21 @@ export default {
     init() {
       this.video.totalTime = this.$refs.video.duration;
     },
+    currentTimeChange(value) {
+      this.video.currentTime = (this.video.totalTime * value) / 100;
+    },
     timeupdate() {
-      this.value =
-        (100 / this.$refs.video.duration) * this.$refs.video.currentTime;
+      this.value = (100 / this.video.totalTime) * this.$refs.video.currentTime;
       this.video.currentTime = this.$refs.video.currentTime;
     },
-    touchstart() {
+    touchSliderStart() {
       this.$refs.video.pause();
     },
-    touchend() {
+    touchSliderEnd() {
       this.$refs.video.play();
     },
-    currentTimeChange(value) {
-      this.video.currentTime = value / (100 / this.$refs.video.duration);
-    },
-    moveProgress() {
-      this.$refs.video.currentTime =
-        this.$refs.video.duration * (this.value / 100);
+    moveProgress(value) {
+      this.$refs.video.currentTime = (this.video.totalTime * value) / 100;
     },
     fullscreen() {
       if (!this.state.fullScreen) {
@@ -160,10 +239,15 @@ export default {
       }
     },
     playOrPause() {
+      this.state.isStarted = true;
       if (this.state.playing === true) {
+        this.state.playBtnShow = true;
+        this.state.controlBarShow = true;
         this.$refs.video.pause();
         this.state.playing = false;
       } else {
+        this.state.playBtnShow = false;
+        this.state.controlBarShow = false;
         this.$refs.video.play();
         this.state.playing = true;
       }
@@ -175,7 +259,7 @@ export default {
 <style scoped>
 .player {
   width: 100%;
-  height: 250px;
+  height: 56vw;
   overflow: hidden;
   position: relative;
 }
@@ -221,10 +305,9 @@ export default {
 .fullscreen-btn {
   font-size: 1.38em;
   color: white;
-  /*font-size: 18px*/
 }
 .buffer {
-  background-color: red;
+  background: hsla(0, 0%, 100%, 0.5);
   height: 2px;
   z-index: 5;
   position: relative;
@@ -239,5 +322,38 @@ export default {
 }
 /deep/ .van-slider__bar {
   z-index: 10;
+}
+.wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  pointer-events: none;
+  background-image: -moz-linear-gradient(
+    rgba(0, 0, 0, 0.6),
+    rgba(0, 0, 0, 0.36) 20%,
+    transparent 36%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.24) 77%,
+    rgba(0, 0, 0, 0.36) 83%,
+    rgba(0, 0, 0, 0.6)
+  );
+  background-image: linear-gradient(
+    rgba(0, 0, 0, 0.5),
+    rgba(0, 0, 0, 0.3) 10%,
+    rgba(0, 0, 0, 0.1) 20%,
+    transparent 50%,
+    transparent 70%,
+    rgba(0, 0, 0, 0.1) 80%,
+    rgba(0, 0, 0, 0.3) 90%,
+    rgba(0, 0, 0, 0.5)
+  );
+}
+.return {
+  position: relative;
+  top: 5%;
+  left: 5%;
+  font-size: 20px;
 }
 </style>
