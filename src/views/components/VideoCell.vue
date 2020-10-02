@@ -11,29 +11,28 @@
       </div>
       <div class="top-right">
         <div class="clearFix">
-          <span class="fh">ABP-103</span>
+          <span class="fh">{{ video.video.fh }}</span>
           <span class="score">评分</span>
         </div>
-        <div class="title">
-          text text text text text text text text text
-          你哈你哈你哈你哈你哈你哈你哈你哈你哈你哈
+        <div class="title van-multi-ellipsis--l2">
+          {{ video.video.title }}
         </div>
       </div>
     </div>
     <div class="video-area">
-      <MyVideo></MyVideo>
+      <MyVideo :src="video.video.url" :poster="video.bimg" :index="index" />
       <div class="play-count"></div>
       <div class="time"></div>
     </div>
     <div class="footer">
       <svg-icon
-        :style="{ color: !isLike ? 'red' : '#8a8a8a' }"
+        :style="{ color: isLike ? 'red' : '#8a8a8a' }"
         style="border-color:black"
         class="love"
         icon-class="like"
       />
       <svg-icon
-        :style="{ color: !isLike ? '#1afa29' : '#8a8a8a' }"
+        :style="{ color: isLike ? '#1afa29' : '#8a8a8a' }"
         class="up"
         icon-class="up"
       />
@@ -55,13 +54,23 @@ export default {
       default: function() {
         return {};
       }
+    },
+    index: {
+      type: Number,
+      default: -1
     }
   },
   data() {
     return {
-      isLike: false,
-      isUp: false
+      isUp: false,
+      params: {},
+      isLike: this.video.video.scoreDetail["islike"]
     };
+  },
+  watch: {
+    video: function() {
+      this.isLike = this.video.video.scoreDetail["islike"];
+    }
   },
   mounted() {},
   methods: {}
@@ -85,7 +94,7 @@ export default {
   font-size: 12px;
 }
 .top {
-  padding-top: 2%;
+  padding: 2%;
 }
 .top-left {
   text-align: center;

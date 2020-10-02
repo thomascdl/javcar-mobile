@@ -4,11 +4,20 @@
       class="wrapper"
       :style="{ visibility: state.controlBarShow ? 'visible' : 'hidden' }"
     ></div>
+    <!--    <v-touch-->
+    <!--      class="touch-area"-->
+    <!--      v-bind:enabled="true"-->
+    <!--      @touchstart.native="touchScreenStart"-->
+    <!--      @panright="touchScreenMove"-->
+    <!--      @panleft="touchScreenMove"-->
+    <!--      @tap="clickScreen"-->
+    <!--    >-->
+    <!--    </v-touch>-->
     <div
       class="control"
-      @click="clickScreen"
       @touchstart="touchScreenStart"
       @touchmove="touchScreenMove"
+      @click="clickScreen"
     >
       <svg-icon
         v-if="state.fullScreen & state.controlBarShow"
@@ -19,7 +28,7 @@
       <div
         class="play-pause"
         @click.stop="playOrPause"
-        v-show="state.playBtnShow"
+        v-show="state.playBtnShow || state.isLoading"
       >
         <img
           v-show="!state.playing && !state.isLoading"
@@ -71,12 +80,13 @@
         </div>
       </div>
     </div>
+
     <video
       ref="video"
       :src="src"
       id="video"
       style="width:100%;height:100%;object-fit:fill"
-      :poster="poster"
+      :poster="posterSrc"
       @timeupdate="timeupdate"
       @canplay="init"
       @canplaythrough="state.isLoading = false"
@@ -99,10 +109,15 @@ export default {
     poster: {
       type: String,
       default: "https://photo.mac69.com/180205/18020526/a9yPQozt0g.jpg"
+    },
+    index: {
+      type: Number,
+      default: -1
     }
   },
   data() {
     return {
+      posterSrc: "",
       startValue: 0, //每次触屏时的value值
       start: 0, //每次触屏的开始位置
       end: 0, //每次触屏的结束位置
@@ -115,7 +130,7 @@ export default {
       },
       imgSrc: {
         pauseImg: require("assets/video/content_btn_pause.svg"),
-        playImg: require("assets/video/content_btn_play.svg"),
+        playImg: require("assets/video/content_btn_play.svg")
       },
       // 播放状态控制
       state: {
@@ -143,6 +158,14 @@ export default {
         return `${minute}:${second}`;
       } else {
         return `${hour}:${minute}:${second}`;
+      }
+    }
+  },
+  watch: {
+    "$store.state.playIndex": function() {
+      if (this.$store.state.playIndex !== this.index && this.state.isStarted) {
+        this.reset();
+        this.$refs.video.load();
       }
     }
   },
@@ -181,7 +204,10 @@ export default {
       this.startValue = this.value;
     },
     touchScreenMove(e) {
-      const moveRange = (e.touches[0].clientX - this.start) / 10;
+      if (!this.state.isStarted) {
+        return;
+      }
+      const moveRange = (e.touches[0].clientX - this.start) / 5;
       const newValue = (this.startValue + moveRange) | 0;
       this.value = newValue < 100 ? newValue : 100;
       this.video.currentTime = this.$refs.video.currentTime =
@@ -196,8 +222,10 @@ export default {
     },
     progress() {
       setTimeout(() => {
-        const end = this.$refs.video.buffered.end(0);
-        this.video.buffer = ((end / this.video.totalTime) * 100) | 0;
+        if (this.$refs.video.buffered.length !== 0) {
+          const end = this.$refs.video.buffered.end(0);
+          this.video.buffer = ((end / this.video.totalTime) * 100) | 0;
+        }
       }, 100);
     },
     playing() {
@@ -249,9 +277,32 @@ export default {
         this.state.playBtnShow = false;
         this.state.controlBarShow = false;
         this.$refs.video.play();
+        this.$store.commit("changeIndex", this.index);
         this.state.playing = true;
       }
     }
+  },
+  mounted() {
+    // this.width = this.$refs.player.offsetWidth;
+    const options = {
+      root: document.querySelector(".main-area")
+    };
+    this.observer = new IntersectionObserver(entries => {
+      // console.log(entries[0].isIntersecting);
+      if (entries[0].isIntersecting) {
+        this.posterSrc = this.poster;
+        // console.log(this.index + "进入可视区域");
+        // do something
+      } else {
+        if (this.state.isStarted) {
+          this.reset();
+          this.$refs.video.load();
+        }
+        // console.log(this.index + "移出可视区域");
+        // do something
+      }
+    }, options);
+    this.observer.observe(this.$refs.video);
   }
 };
 </script>
