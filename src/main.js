@@ -13,9 +13,6 @@ Vue.use(Vant);
 
 Vue.config.productionTip = false;
 
-import VueTouch from "vue-touch";
-Vue.use(VueTouch);
-
 import global from "@/global/Global";
 Vue.prototype.GLOBAL = global;
 

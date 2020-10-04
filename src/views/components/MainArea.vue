@@ -1,5 +1,5 @@
 <template>
-  <div class="up-area">
+  <div>
     <div class="top">
       <slot name="top">
         <van-search
@@ -34,12 +34,6 @@ export default {
 </script>
 
 <style scoped>
-.up-area {
-  position: absolute;
-  top: 0;
-  bottom: 50px;
-  width: 100%;
-}
 .top {
   top: 0;
   position: fixed;
@@ -47,7 +41,7 @@ export default {
 }
 .main-area {
   position: absolute;
-  bottom: 0;
+  bottom: 50px;
   top: 54px;
   overflow: scroll;
   width: 100%;

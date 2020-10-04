@@ -4,20 +4,11 @@
       class="wrapper"
       :style="{ visibility: state.controlBarShow ? 'visible' : 'hidden' }"
     ></div>
-    <!--    <v-touch-->
-    <!--      class="touch-area"-->
-    <!--      v-bind:enabled="true"-->
-    <!--      @touchstart.native="touchScreenStart"-->
-    <!--      @panright="touchScreenMove"-->
-    <!--      @panleft="touchScreenMove"-->
-    <!--      @tap="clickScreen"-->
-    <!--    >-->
-    <!--    </v-touch>-->
     <div
       class="control"
       @touchstart="touchScreenStart"
       @touchmove="touchScreenMove"
-      @click="clickScreen"
+      @click.stop="clickScreen"
     >
       <svg-icon
         v-if="state.fullScreen & state.controlBarShow"
@@ -57,6 +48,7 @@
           <div class="buffer" :style="{ width: video.buffer + '%' }"></div>
           <van-slider
             v-model="value"
+            :max="maxValue"
             class="play-progress-bar"
             button-size="13px"
             active-color="red"
@@ -83,7 +75,7 @@
 
     <video
       ref="video"
-      :src="src"
+      src="https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"
       id="video"
       style="width:100%;height:100%;object-fit:fill"
       :poster="posterSrc"
@@ -117,6 +109,7 @@ export default {
   },
   data() {
     return {
+      maxValue: 1000,
       posterSrc: "",
       startValue: 0, //每次触屏时的value值
       start: 0, //每次触屏的开始位置
@@ -164,12 +157,32 @@ export default {
   watch: {
     "$store.state.playIndex": function() {
       if (this.$store.state.playIndex !== this.index && this.state.isStarted) {
-        this.reset();
-        this.$refs.video.load();
+        console.log(11111);
+        this.reload(100);
       }
     }
   },
   methods: {
+    reload(delay) {
+      setTimeout(() => {
+        this.reset();
+        this.$refs.video.load();
+      }, delay);
+    },
+    exitFull(delay) {
+      window.plus.screen.lockOrientation("portrait-primary");
+      setTimeout(() => {
+        document.exitFullscreen();
+        this.state.fullScreen = false;
+      }, delay);
+    },
+    enterFull(delay) {
+      window.plus.screen.lockOrientation("landscape-primary");
+      setTimeout(() => {
+        this.$refs.player.requestFullscreen();
+        this.state.fullScreen = true;
+      }, delay);
+    },
     reset() {
       this.video = {
         currentTime: "00:00",
@@ -191,13 +204,9 @@ export default {
     },
     videoEnd() {
       if (this.state.fullScreen) {
-        window.plus.screen.lockOrientation("portrait-primary");
-        setTimeout(() => {
-          document.exitFullscreen();
-        }, 100);
+        this.exitFull(100);
       }
-      this.reset();
-      this.$refs.video.load();
+      this.reload();
     },
     touchScreenStart(e) {
       this.start = e.touches[0].clientX;
@@ -207,11 +216,17 @@ export default {
       if (!this.state.isStarted) {
         return;
       }
-      const moveRange = (e.touches[0].clientX - this.start) / 5;
-      const newValue = (this.startValue + moveRange) | 0;
-      this.value = newValue < 100 ? newValue : 100;
+      const movePercent = (e.touches[0].clientX - this.start) / this.moveStep;
+      // console.log(movePercent);
+      if (Math.abs(movePercent) < 8 && !this.state.fullScreen) {
+        return;
+      }
+      const newValue =
+        (this.startValue + movePercent * 0.4 * this.valuePerSecond) | 0;
+      this.value = newValue < this.maxValue ? newValue : this.maxValue;
+      this.value = newValue > 0 ? newValue : 0;
       this.video.currentTime = this.$refs.video.currentTime =
-        (this.video.totalTime * this.value) / 100;
+        (this.video.totalTime * this.value) / this.maxValue;
     },
     clickScreen() {
       if (!this.state.isStarted) {
@@ -233,13 +248,16 @@ export default {
       this.state.playing = true;
     },
     init() {
+      console.log('loaded');
       this.video.totalTime = this.$refs.video.duration;
+      this.valuePerSecond = this.maxValue / this.$refs.video.duration;
     },
     currentTimeChange(value) {
-      this.video.currentTime = (this.video.totalTime * value) / 100;
+      this.video.currentTime = (this.video.totalTime * value) / this.maxValue;
     },
     timeupdate() {
-      this.value = (100 / this.video.totalTime) * this.$refs.video.currentTime;
+      this.value =
+        (this.maxValue / this.video.totalTime) * this.$refs.video.currentTime;
       this.video.currentTime = this.$refs.video.currentTime;
     },
     touchSliderStart() {
@@ -249,21 +267,14 @@ export default {
       this.$refs.video.play();
     },
     moveProgress(value) {
-      this.$refs.video.currentTime = (this.video.totalTime * value) / 100;
+      this.$refs.video.currentTime =
+        (this.video.totalTime * value) / this.maxValue;
     },
     fullscreen() {
       if (!this.state.fullScreen) {
-        window.plus.screen.lockOrientation("landscape-primary");
-        setTimeout(() => {
-          this.$refs.player.requestFullscreen();
-          this.state.fullScreen = true;
-        }, 100);
+        this.enterFull(100);
       } else {
-        window.plus.screen.lockOrientation("portrait-primary");
-        setTimeout(() => {
-          document.exitFullscreen();
-          this.state.fullScreen = false;
-        }, 100);
+        this.exitFull(100);
       }
     },
     playOrPause() {
@@ -283,23 +294,25 @@ export default {
     }
   },
   mounted() {
-    // this.width = this.$refs.player.offsetWidth;
+    this.screenWidth = this.$refs.player.offsetWidth;
+    this.moveStep = this.screenWidth * 0.01;
     const options = {
       root: document.querySelector(".main-area")
     };
     this.observer = new IntersectionObserver(entries => {
+      if (this.state.fullScreen) {
+        return;
+      }
       // console.log(entries[0].isIntersecting);
       if (entries[0].isIntersecting) {
         this.posterSrc = this.poster;
         // console.log(this.index + "进入可视区域");
-        // do something
       } else {
         if (this.state.isStarted) {
           this.reset();
           this.$refs.video.load();
         }
         // console.log(this.index + "移出可视区域");
-        // do something
       }
     }, options);
     this.observer.observe(this.$refs.video);
@@ -332,6 +345,7 @@ export default {
   transform: translate(-50%, -50%);
 }
 .control-bar {
+  z-index: 3;
   width: 90%;
   position: absolute;
   bottom: 4%;

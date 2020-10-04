@@ -1,9 +1,10 @@
 import axios from "axios";
+import Global from "../global/Global";
 
 export function request(config) {
   // 1.创建axios的实例
   const instance = axios.create({
-    baseURL: "http://192.168.1.3:8001",
+    baseURL: Global.back_url,
     timeout: 5000
   });
   // 2.axios的拦截器
