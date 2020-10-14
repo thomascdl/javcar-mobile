@@ -8,6 +8,7 @@
       class="control"
       @touchstart="touchScreenStart"
       @touchmove="touchScreenMove"
+      @touchend="touchScreenEnd"
       @click.stop="clickScreen"
     >
       <svg-icon
@@ -78,7 +79,7 @@
       src="https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"
       id="video"
       style="width:100%;height:100%;object-fit:fill"
-      :poster="posterSrc"
+      poster="https://photo.mac69.com/180205/18020526/a9yPQozt0g.jpg"
       @timeupdate="timeupdate"
       @canplay="init"
       @canplaythrough="state.isLoading = false"
@@ -109,10 +110,13 @@ export default {
   },
   data() {
     return {
+      timeAfterMove: 0,
+      moveTo: null,
       maxValue: 1000,
       posterSrc: "",
       startValue: 0, //每次触屏时的value值
-      start: 0, //每次触屏的开始位置
+      startX: 0, //每次触屏的开始位置
+      startY: 0,
       end: 0, //每次触屏的结束位置
       value: 0,
       // video控制显示设置
@@ -157,7 +161,6 @@ export default {
   watch: {
     "$store.state.playIndex": function() {
       if (this.$store.state.playIndex !== this.index && this.state.isStarted) {
-        console.log(11111);
         this.reload(100);
       }
     }
@@ -189,8 +192,11 @@ export default {
         totalTime: "00:00",
         buffer: 0
       };
+      this.timeAfterMove = 0;
+      this.moveTo = null;
       this.startValue = 0;
-      this.start = 0;
+      this.startX = 0;
+      this.startY = 0;
       this.end = 0;
       this.value = 0;
       this.state = {
@@ -206,28 +212,60 @@ export default {
       if (this.state.fullScreen) {
         this.exitFull(100);
       }
-      this.reload();
+      this.reload(100);
     },
     touchScreenStart(e) {
-      this.start = e.touches[0].clientX;
+      this.startX = e.touches[0].clientX;
+      this.startY = e.touches[0].clientY;
       this.startValue = this.value;
+    },
+    touchScreenEnd() {
+      if (this.moveTo === "left") {
+        this.$refs.video.currentTime = this.timeAfterMove;
+      }
+      this.moveTo = null;
     },
     touchScreenMove(e) {
       if (!this.state.isStarted) {
         return;
       }
-      const movePercent = (e.touches[0].clientX - this.start) / this.moveStep;
-      // console.log(movePercent);
-      if (Math.abs(movePercent) < 8 && !this.state.fullScreen) {
+      if (this.moveTo === "up") {
         return;
       }
+      const deltaX = e.touches[0].clientX - this.startX;
+      const deltaY = e.touches[0].clientY - this.startY;
+      if (!this.moveTo) {
+        if (Math.abs(deltaX) < Math.abs(deltaY)) {
+          this.moveTo = "up";
+          return;
+        } else {
+          this.moveTo = "left";
+        }
+      }
+      const movePercent = deltaX / this.moveStep;
       const newValue =
-        (this.startValue + movePercent * 0.4 * this.valuePerSecond) | 0;
+        (this.startValue + movePercent * this.valuePerSecond) | 0;
       this.value = newValue < this.maxValue ? newValue : this.maxValue;
       this.value = newValue > 0 ? newValue : 0;
-      this.video.currentTime = this.$refs.video.currentTime =
+      this.timeAfterMove = this.video.currentTime =
         (this.video.totalTime * this.value) / this.maxValue;
     },
+    // touchScreenMove(e) {
+    //   if (!this.state.isStarted) {
+    //     return;
+    //   }
+    //   const movePercent = (e.touches[0].clientX - this.startX) / this.moveStep;
+    //   // console.log(movePercent);
+    //   if (Math.abs(movePercent) < 8 && !this.state.fullScreen) {
+    //     return;
+    //   }
+    //   const newValue =
+    //     (this.startValue + movePercent * 0.4 * this.valuePerSecond) | 0;
+    //   this.value = newValue < this.maxValue ? newValue : this.maxValue;
+    //   this.value = newValue > 0 ? newValue : 0;
+    //   this.video.currentTime = this.$refs.video.currentTime =
+    //     (this.video.totalTime * this.value) / this.maxValue;
+    // },
     clickScreen() {
       if (!this.state.isStarted) {
         return;
@@ -248,7 +286,7 @@ export default {
       this.state.playing = true;
     },
     init() {
-      console.log('loaded');
+      console.log("loaded");
       this.video.totalTime = this.$refs.video.duration;
       this.valuePerSecond = this.maxValue / this.$refs.video.duration;
     },
@@ -256,6 +294,9 @@ export default {
       this.video.currentTime = (this.video.totalTime * value) / this.maxValue;
     },
     timeupdate() {
+      if (this.moveTo === "left") {
+        return;
+      }
       this.value =
         (this.maxValue / this.video.totalTime) * this.$refs.video.currentTime;
       this.video.currentTime = this.$refs.video.currentTime;
