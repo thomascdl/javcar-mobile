@@ -79,7 +79,7 @@
       src="https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"
       id="video"
       style="width:100%;height:100%;object-fit:fill"
-      poster="https://photo.mac69.com/180205/18020526/a9yPQozt0g.jpg"
+      :poster="posterSrc"
       @timeupdate="timeupdate"
       @canplay="init"
       @canplaythrough="state.isLoading = false"
@@ -110,33 +110,12 @@ export default {
   },
   data() {
     return {
-      timeAfterMove: 0,
-      moveTo: null,
+      value: 0,
       maxValue: 1000,
       posterSrc: "",
-      startValue: 0, //每次触屏时的value值
-      startX: 0, //每次触屏的开始位置
-      startY: 0,
-      end: 0, //每次触屏的结束位置
-      value: 0,
-      // video控制显示设置
-      video: {
-        currentTime: "00:00", // 进度时间
-        totalTime: "00:00", // 总时间
-        buffer: 0 //缓存进度
-      },
       imgSrc: {
         pauseImg: require("assets/video/content_btn_pause.svg"),
         playImg: require("assets/video/content_btn_play.svg")
-      },
-      // 播放状态控制
-      state: {
-        isStarted: false, // 是否已经播放过
-        playBtnShow: true, // 播放按钮
-        controlBarShow: false, // 控制条
-        fullScreen: false,
-        playing: false,
-        isLoading: false
       }
     };
   },
@@ -165,39 +144,19 @@ export default {
       }
     }
   },
+  created() {
+    this.reset();
+  },
   methods: {
-    reload(delay) {
-      setTimeout(() => {
-        this.reset();
-        this.$refs.video.load();
-      }, delay);
-    },
-    exitFull(delay) {
-      window.plus.screen.lockOrientation("portrait-primary");
-      setTimeout(() => {
-        document.exitFullscreen();
-        this.state.fullScreen = false;
-      }, delay);
-    },
-    enterFull(delay) {
-      window.plus.screen.lockOrientation("landscape-primary");
-      setTimeout(() => {
-        this.$refs.player.requestFullscreen();
-        this.state.fullScreen = true;
-      }, delay);
-    },
     reset() {
       this.video = {
         currentTime: "00:00",
         totalTime: "00:00",
         buffer: 0
       };
-      this.timeAfterMove = 0;
       this.moveTo = null;
-      this.startValue = 0;
       this.startX = 0;
       this.startY = 0;
-      this.end = 0;
       this.value = 0;
       this.state = {
         isStarted: false,
@@ -208,6 +167,32 @@ export default {
         isLoading: false
       };
     },
+    reload(delay) {
+      setTimeout(() => {
+        this.reset();
+        this.$refs.video.load();
+        this.$refs.video.poster = "";
+        this.$refs.video.poster = this.poster;
+      }, delay);
+    },
+    exitFull(delay) {
+      window.plus.screen.lockOrientation("portrait-primary");
+      setTimeout(() => {
+        document.exitFullscreen();
+        this.state.fullScreen = false;
+        this.screenWidth = this.$refs.player.offsetWidth;
+        this.moveStep = this.screenWidth * 0.01;
+      }, delay);
+    },
+    enterFull(delay) {
+      window.plus.screen.lockOrientation("landscape-primary");
+      setTimeout(() => {
+        this.$refs.player.requestFullscreen();
+        this.state.fullScreen = true;
+        this.screenWidth = this.$refs.player.offsetWidth;
+        this.moveStep = this.screenWidth * 0.01;
+      }, delay);
+    },
     videoEnd() {
       if (this.state.fullScreen) {
         this.exitFull(100);
@@ -217,11 +202,11 @@ export default {
     touchScreenStart(e) {
       this.startX = e.touches[0].clientX;
       this.startY = e.touches[0].clientY;
-      this.startValue = this.value;
+      this.startTime = this.video.currentTime;
     },
     touchScreenEnd() {
       if (this.moveTo === "left") {
-        this.$refs.video.currentTime = this.timeAfterMove;
+        this.$refs.video.currentTime = this.video.currentTime;
       }
       this.moveTo = null;
     },
@@ -243,12 +228,12 @@ export default {
         }
       }
       const movePercent = deltaX / this.moveStep;
-      const newValue =
-        (this.startValue + movePercent * this.valuePerSecond) | 0;
-      this.value = newValue < this.maxValue ? newValue : this.maxValue;
-      this.value = newValue > 0 ? newValue : 0;
-      this.timeAfterMove = this.video.currentTime =
-        (this.video.totalTime * this.value) / this.maxValue;
+      const newTine = this.startTime + movePercent;
+      this.video.currentTime =
+        newTine < this.video.totalTime ? newTine : this.video.totalTime;
+      this.video.currentTime = newTine > 0 ? newTine : 0;
+      this.value =
+        (this.video.currentTime / this.video.totalTime) * this.maxValue;
     },
     // touchScreenMove(e) {
     //   if (!this.state.isStarted) {
@@ -288,7 +273,7 @@ export default {
     init() {
       console.log("loaded");
       this.video.totalTime = this.$refs.video.duration;
-      this.valuePerSecond = this.maxValue / this.$refs.video.duration;
+      // this.valuePerSecond = this.maxValue / this.$refs.video.duration;
     },
     currentTimeChange(value) {
       this.video.currentTime = (this.video.totalTime * value) / this.maxValue;
@@ -350,8 +335,7 @@ export default {
         // console.log(this.index + "进入可视区域");
       } else {
         if (this.state.isStarted) {
-          this.reset();
-          this.$refs.video.load();
+          this.reload(100)
         }
         // console.log(this.index + "移出可视区域");
       }
