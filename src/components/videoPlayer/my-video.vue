@@ -144,13 +144,6 @@ export default {
       if (this.$store.state.playIndex !== this.index && this.state.isStarted) {
         this.reload(100);
       }
-    },
-    controlBarShow: function() {
-      if (this.controlBarShow && this.state.playing) {
-        this.closeControlBar(4000)
-      } else {
-        clearTimeout(this.ct);
-      }
     }
   },
   created() {
@@ -308,17 +301,18 @@ export default {
     closeControlBar(delay) {
       clearTimeout(this.ct);
       this.ct = setTimeout(() => {
-        console.log("close");
         this.playBtnShow = false;
         this.controlBarShow = false;
       }, delay);
     },
     playOrPause() {
       if (this.state.playing === true) {
+        // 暂停操作
         clearTimeout(this.ct);
         this.$refs.video.pause();
         this.state.playing = false;
       } else {
+        // 播放操作
         this.playBtnShow = this.state.isStarted === true;
         this.closeControlBar(4000)
         this.$refs.video.play();
@@ -333,22 +327,15 @@ export default {
       }
       this.playBtnShow = !this.playBtnShow;
       this.controlBarShow = !this.controlBarShow;
+      if (!this.state.playing) {
+        return;
+      }
+      if (this.controlBarShow) {
+        this.closeControlBar(4000)
+      } else {
+        clearTimeout(this.ct);
+      }
     }
-    // playOrPause() {
-    //   this.state.isStarted = true;
-    //   if (this.state.playing === true) {
-    //     this.playBtnShow = true;
-    //     this.controlBarShow = true;
-    //     this.$refs.video.pause();
-    //     this.state.playing = false;
-    //   } else {
-    //     this.playBtnShow = false;
-    //     this.controlBarShow = false;
-    //     this.$refs.video.play();
-    //     this.$store.commit("changeIndex", this.index);
-    //     this.state.playing = true;
-    //   }
-    // }
   },
   mounted() {
     this.moveStep = (this.$refs.player.offsetWidth * 0.01) | 0;
