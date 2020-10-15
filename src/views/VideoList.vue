@@ -38,7 +38,7 @@ export default {
       videoList: [],
       videoCount: 0,
       page: 0,
-      pageSize: 20,
+      pageSize: 10,
       loading: false,
       finished: false,
       refreshing: false,
@@ -50,44 +50,50 @@ export default {
     VideoCell
   },
   created() {
-    this.getInfo(this.$store.state.input);
+    this.getMore({ input: this.$store.state.input, limit: this.pageSize });
   },
   watch: {
     "$store.state.input": function() {
-      this.getInfo({ input: this.$store.state.input });
+      this.refresh({ input: this.$store.state.input, limit: this.pageSize });
     }
   },
   methods: {
     onLoad() {
+      this.page++;
       if (this.isFirst) {
         this.isFirst = false;
         this.loading = false;
         return;
       }
-      this.page++;
-      this.getMore({ input: this.$store.state.input, page: this.page });
+      setTimeout(() => {
+        this.getMore({
+          input: this.$store.state.input,
+          page: this.page,
+          limit: this.pageSize
+        });
+      }, 2000);
       if (this.videoCount >= 40) {
         this.finished = true;
       }
     },
     onRefresh() {
+      this.finished = false;
       setTimeout(() => {
-        this.getInfo(this.$store.state.input);
-        this.refreshing = false;
-      }, 1000);
+        this.refresh({ input: this.$store.state.input, limit: this.pageSize });
+      }, 2000);
     },
-    getInfo(query) {
+    refresh(query) {
       getAllVideos(query)
         .then(res => {
           this.videoList = res.data;
           this.videoCount = this.pageSize;
+          this.refreshing = false;
           if (!res.userId) {
             this.resetLoginStatus();
           }
         })
         .catch(() => {
-          this.videoList = [];
-          this.videoCount = 0;
+          this.refreshing = false;
         });
     },
     getMore(query) {
@@ -100,7 +106,9 @@ export default {
             this.resetLoginStatus();
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          this.loading = false;
+        });
     },
     resetLoginStatus() {
       window.localStorage.setItem("token", "");
