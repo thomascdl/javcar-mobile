@@ -2,7 +2,7 @@
   <div ref="player" class="player">
     <div
       class="wrapper"
-      :style="{ visibility: state.controlBarShow ? 'visible' : 'hidden' }"
+      :style="{ visibility: controlBarShow ? 'visible' : 'hidden' }"
     ></div>
     <div
       class="control"
@@ -12,7 +12,7 @@
       @click.stop="clickScreen"
     >
       <svg-icon
-        v-if="state.fullScreen & state.controlBarShow"
+        v-if="state.fullScreen & controlBarShow"
         class="return"
         icon-class="return"
         @click.stop="fullscreen"
@@ -20,7 +20,7 @@
       <div
         class="play-pause"
         @click.stop="playOrPause"
-        v-show="state.playBtnShow || state.isLoading"
+        v-show="playBtnShow || state.isLoading"
       >
         <img
           v-show="!state.playing && !state.isLoading"
@@ -36,7 +36,7 @@
       </div>
       <div
         class="control-bar"
-        v-show="state.controlBarShow"
+        v-show="controlBarShow"
         :style="{ fontSize: state.fullScreen ? '15px' : '13px' }"
       >
         <span id="current-time" class="time">{{
@@ -79,9 +79,9 @@
       src="https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"
       id="video"
       style="width:100%;height:100%;object-fit:fill"
-      :poster="posterSrc"
+      poster="https://photo.mac69.com/180205/18020526/a9yPQozt0g.jpg"
       @timeupdate="timeupdate"
-      @canplay="init"
+      @canplay="initVideo"
       @canplaythrough="state.isLoading = false"
       @waiting="state.isLoading = true"
       @playing="playing"
@@ -113,6 +113,8 @@ export default {
       value: 0,
       maxValue: 1000,
       posterSrc: "",
+      controlBarShow: false,
+      playBtnShow: true,
       imgSrc: {
         pauseImg: require("assets/video/content_btn_pause.svg"),
         playImg: require("assets/video/content_btn_play.svg")
@@ -142,6 +144,13 @@ export default {
       if (this.$store.state.playIndex !== this.index && this.state.isStarted) {
         this.reload(100);
       }
+    },
+    controlBarShow: function() {
+      if (this.controlBarShow && this.state.playing) {
+        this.closeControlBar(4000)
+      } else {
+        clearTimeout(this.ct);
+      }
     }
   },
   created() {
@@ -154,14 +163,15 @@ export default {
         totalTime: "00:00",
         buffer: 0
       };
+      this.moveStep = 0;
       this.moveTo = null;
       this.startX = 0;
       this.startY = 0;
       this.value = 0;
+      this.controlBarShow = false;
+      this.playBtnShow = true;
       this.state = {
         isStarted: false,
-        playBtnShow: true,
-        controlBarShow: false,
         fullScreen: false,
         playing: false,
         isLoading: false
@@ -175,13 +185,15 @@ export default {
         this.$refs.video.poster = this.poster;
       }, delay);
     },
+    initWidth() {
+      this.moveStep = (this.$refs.player.offsetWidth * 0.01) | 0;
+    },
     exitFull(delay) {
       window.plus.screen.lockOrientation("portrait-primary");
       setTimeout(() => {
         document.exitFullscreen();
         this.state.fullScreen = false;
-        this.screenWidth = this.$refs.player.offsetWidth;
-        this.moveStep = this.screenWidth * 0.01;
+        this.initWidth();
       }, delay);
     },
     enterFull(delay) {
@@ -189,8 +201,7 @@ export default {
       setTimeout(() => {
         this.$refs.player.requestFullscreen();
         this.state.fullScreen = true;
-        this.screenWidth = this.$refs.player.offsetWidth;
-        this.moveStep = this.screenWidth * 0.01;
+        this.initWidth();
       }, delay);
     },
     videoEnd() {
@@ -211,10 +222,7 @@ export default {
       this.moveTo = null;
     },
     touchScreenMove(e) {
-      if (!this.state.isStarted) {
-        return;
-      }
-      if (this.moveTo === "up") {
+      if (!this.state.isStarted || this.moveTo === "up") {
         return;
       }
       const deltaX = e.touches[0].clientX - this.startX;
@@ -232,8 +240,10 @@ export default {
       this.video.currentTime =
         newTine < this.video.totalTime ? newTine : this.video.totalTime;
       this.video.currentTime = newTine > 0 ? newTine : 0;
-      this.value =
-        (this.video.currentTime / this.video.totalTime) * this.maxValue;
+      setTimeout(() => {
+        this.value =
+          ((this.video.currentTime / this.video.totalTime) * this.maxValue) | 0;
+      }, 50);
     },
     // touchScreenMove(e) {
     //   if (!this.state.isStarted) {
@@ -251,13 +261,6 @@ export default {
     //   this.video.currentTime = this.$refs.video.currentTime =
     //     (this.video.totalTime * this.value) / this.maxValue;
     // },
-    clickScreen() {
-      if (!this.state.isStarted) {
-        return;
-      }
-      this.state.playBtnShow = !this.state.playBtnShow;
-      this.state.controlBarShow = !this.state.controlBarShow;
-    },
     progress() {
       setTimeout(() => {
         if (this.$refs.video.buffered.length !== 0) {
@@ -270,13 +273,9 @@ export default {
       this.state.isLoading = false;
       this.state.playing = true;
     },
-    init() {
+    initVideo() {
       console.log("loaded");
       this.video.totalTime = this.$refs.video.duration;
-      // this.valuePerSecond = this.maxValue / this.$refs.video.duration;
-    },
-    currentTimeChange(value) {
-      this.video.currentTime = (this.video.totalTime * value) / this.maxValue;
     },
     timeupdate() {
       if (this.moveTo === "left") {
@@ -292,6 +291,9 @@ export default {
     touchSliderEnd() {
       this.$refs.video.play();
     },
+    currentTimeChange(value) {
+      this.video.currentTime = (this.video.totalTime * value) / this.maxValue;
+    },
     moveProgress(value) {
       this.$refs.video.currentTime =
         (this.video.totalTime * value) / this.maxValue;
@@ -303,25 +305,53 @@ export default {
         this.exitFull(100);
       }
     },
+    closeControlBar(delay) {
+      clearTimeout(this.ct);
+      this.ct = setTimeout(() => {
+        console.log("close");
+        this.playBtnShow = false;
+        this.controlBarShow = false;
+      }, delay);
+    },
     playOrPause() {
-      this.state.isStarted = true;
       if (this.state.playing === true) {
-        this.state.playBtnShow = true;
-        this.state.controlBarShow = true;
+        clearTimeout(this.ct);
         this.$refs.video.pause();
         this.state.playing = false;
       } else {
-        this.state.playBtnShow = false;
-        this.state.controlBarShow = false;
+        this.playBtnShow = this.state.isStarted === true;
+        this.closeControlBar(4000)
         this.$refs.video.play();
         this.$store.commit("changeIndex", this.index);
         this.state.playing = true;
       }
+      this.state.isStarted = true;
+    },
+    clickScreen() {
+      if (!this.state.isStarted) {
+        return;
+      }
+      this.playBtnShow = !this.playBtnShow;
+      this.controlBarShow = !this.controlBarShow;
     }
+    // playOrPause() {
+    //   this.state.isStarted = true;
+    //   if (this.state.playing === true) {
+    //     this.playBtnShow = true;
+    //     this.controlBarShow = true;
+    //     this.$refs.video.pause();
+    //     this.state.playing = false;
+    //   } else {
+    //     this.playBtnShow = false;
+    //     this.controlBarShow = false;
+    //     this.$refs.video.play();
+    //     this.$store.commit("changeIndex", this.index);
+    //     this.state.playing = true;
+    //   }
+    // }
   },
   mounted() {
-    this.screenWidth = this.$refs.player.offsetWidth;
-    this.moveStep = this.screenWidth * 0.01;
+    this.moveStep = (this.$refs.player.offsetWidth * 0.01) | 0;
     const options = {
       root: document.querySelector(".main-area")
     };
@@ -335,7 +365,7 @@ export default {
         // console.log(this.index + "进入可视区域");
       } else {
         if (this.state.isStarted) {
-          this.reload(100)
+          this.reload(100);
         }
         // console.log(this.index + "移出可视区域");
       }
