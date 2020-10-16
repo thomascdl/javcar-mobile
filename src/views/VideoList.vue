@@ -34,74 +34,57 @@ export default {
   name: "videoList",
   data() {
     return {
-      params: {},
       videoList: [],
       videoCount: 0,
       page: 0,
       pageSize: 10,
       loading: false,
       finished: false,
-      refreshing: false,
-      isFirst: true
+      refreshing: false
     };
   },
   components: {
     MainArea,
     VideoCell
   },
-  created() {
-    this.getMore({ input: this.$store.state.input, limit: this.pageSize });
-  },
   watch: {
     "$store.state.input": function() {
-      this.refresh({ input: this.$store.state.input, limit: this.pageSize });
+      this.onRefresh();
     }
   },
   methods: {
     onLoad() {
-      this.page++;
-      if (this.isFirst) {
-        this.isFirst = false;
-        this.loading = false;
-        return;
-      }
       setTimeout(() => {
+        if (this.refreshing) {
+          this.videoList = [];
+          this.videoCount = 0;
+          this.page = 0;
+          this.refreshing = false;
+        }
+        this.page++;
         this.getMore({
           input: this.$store.state.input,
           page: this.page,
           limit: this.pageSize
         });
       }, 2000);
-      if (this.videoCount >= 40) {
-        this.finished = true;
-      }
     },
     onRefresh() {
       this.finished = false;
-      setTimeout(() => {
-        this.refresh({ input: this.$store.state.input, limit: this.pageSize });
-      }, 2000);
-    },
-    refresh(query) {
-      getAllVideos(query)
-        .then(res => {
-          this.videoList = res.data;
-          this.videoCount = this.pageSize;
-          this.refreshing = false;
-          if (!res.userId) {
-            this.resetLoginStatus();
-          }
-        })
-        .catch(() => {
-          this.refreshing = false;
-        });
+      this.loading = true;
+      this.onLoad();
     },
     getMore(query) {
       getAllVideos(query)
         .then(res => {
           this.videoList = this.videoList.concat(res.data);
           this.videoCount += this.pageSize;
-          this.loading = false;
+          setTimeout(() => {
+            this.loading = false;
+            if (this.videoCount >= 30) {
+              this.finished = true;
+            }
+          }, 100);
           if (!res.userId) {
             this.resetLoginStatus();
           }

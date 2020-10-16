@@ -76,10 +76,10 @@
 
     <video
       ref="video"
-      :src="src"
+      src="https://h5player.bytedance.com/video/mp4/xgplayer-demo-360p.mp4"
       id="video"
       style="width:100%;height:100%;object-fit:fill"
-      :poster="posterSrc"
+      poster="https://photo.mac69.com/180205/18020526/a9yPQozt0g.jpg"
       @timeupdate="timeupdate"
       @canplay="initVideo"
       @canplaythrough="state.isLoading = false"
