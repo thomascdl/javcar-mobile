@@ -49,6 +49,7 @@ export default {
   },
   watch: {
     "$store.state.input": function() {
+      this.refreshing = true;
       this.onRefresh();
     }
   },
